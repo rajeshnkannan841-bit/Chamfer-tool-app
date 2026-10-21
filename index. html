@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>End Chamfering Tool Setter</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --accent: #38bdf8;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: 14px; background: var(--bg); color: var(--text); }
+    h1 { font-size: 1.2rem; margin: 0 0 4px 0; color: var(--accent); }
+    .sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 14px; }
+    .presets { display: flex; gap: 8px; margin-bottom: 14px; }
+    .btn {
+      flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); font-weight: 600; font-size: 0.82rem; cursor: pointer;
+    }
+    .btn.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px; margin-bottom: 14px;
+    }
+    .card-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; letter-spacing: 0.5px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 9px; border-radius: 8px; border: 1px solid var(--border);
+      background: #090d16; color: var(--text); font-size: 1rem; font-weight: 700; text-align: center;
+    }
+    input:focus { outline: 2px solid var(--accent); }
+    .summary-bar {
+      display: flex; justify-content: space-between; margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted);
+    }
+    .summary-bar strong { color: var(--text); }
+    .tool-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .tool-card {
+      background: #131c2e; border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px; border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .tool-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tool-name { font-weight: 700; font-size: 0.95rem; }
+    .badge { font-size: 0.72rem; padding: 3px 8px; border-radius: 99px; background: rgba(245, 158, 11, 0.15); color: var(--amber); font-weight: 600; }
+    .reading-row { display: flex; justify-content: space-between; align-items: baseline; background: #090d16; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
+    .reading-label { font-size: 0.78rem; color: var(--muted); }
+    .reading-val { font-size: 1.45rem; font-weight: 800; color: var(--green); }
+    .shank-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--muted); }
+    .shank-input { width: 70px; padding: 4px; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+  <h1>End Chamfering Tool Setter</h1>
+  <div class="sub">4-Station Radial Faceplate Block & Back-Shank Calculator</div>
+
+  <div class="presets">
+    <button class="btn active" id="btn88" onclick="loadPreset(88.9, 20.0, 53.0, 'btn88')">Ø88.9 × 20 (ID 53)</button>
+    <button class="btn" id="btn114" onclick="loadPreset(114.3, 19.65, 79.3, 'btn114')">Ø114.3 (ID 79.3)</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">1. Workpiece Pipe Dimensions (mm)</div>
+    <div class="grid-3">
+      <div>
+        <label>Pipe OD</label>
+        <input type="number" id="od" value="88.9" step="0.1" oninput="calc()" />
+      </div>
+      <div>
+        <label>Raw Wall (WT)</label>
+        <input type="number" id="wt" value="20.0" step="0.1" oninput="calc()" />
+      </div>
+      <div>
+        <label>Required ID</label>
+        <input type="number" id="reqId" value="53.0" step="0.1" oninput="calc()" />
+      </div>
+    </div>
+    <div class="summary-bar">
+      <span>Raw ID: <strong id="rawIdOut">48.90 mm</strong></span>
+      <span>ID Cut/Side: <strong id="docOut">2.05 mm</strong></span>
+      <span>Req Radius: <strong id="reqRadOut">26.50 mm</strong></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">2. Tool Block Settings (From Faceplate Outline)</div>
+    <div class="tool-grid" id="toolContainer"></div>
+  </div>
+
+<script>
+  // Calibrated from user's known Ø88.9 x 20mm (Req ID = 53.0mm -> R_req = 26.50mm) setup
+  const tools = [
+    { id: 't79',  name: '79° (11° Wall) Bevel Tool', stdBlock: 72.0, stdBack: 25.0, color: '#38bdf8' },
+    { id: 'tland',name: '90° Land / Facing Tool',     stdBlock: 81.0, stdBack: 21.0, color: '#22c55e' },
+    { id: 't45',  name: '45° Primary Bevel Tool',     stdBlock: 86.0, stdBack: 27.0, color: '#f59e0b' },
+    { id: 't12',  name: '12° ID Counterbore Tool',    stdBlock: 102.0, stdBack: 27.0, color: '#a855f7' }
+  ];
+
+  const refRadius = 53.0 / 2; // 26.50 mm
+
+  function initTools() {
+    const container = document.getElementById('toolContainer');
+    container.innerHTML = tools.map(t => `
+      <div class="tool-card" style="border-left-color: ${t.color}">
+        <div class="tool-header">
+          <span class="tool-name">${t.name}</span>
+          <span class="badge">Std Back: ${t.stdBack} mm</span>
+        </div>
+        <div class="reading-row">
+          <span class="reading-label">Block from Faceplate Outline:</span>
+          <span class="reading-val" id="out_${t.id}">0.00 mm</span>
+        </div>
+        <div class="shank-row">
+          <span>Actual Back Shank Projection (mm):</span>
+          <input type="number" class="shank-input" id="back_${t.id}" value="${t.stdBack}" step="0.5" oninput="calc()" />
+        </div>
+      </div>
+    `).join('');
+    calc();
+  }
+
+  function loadPreset(od, wt, reqId, btnId) {
+    document.getElementById('od').value = od;
+    document.getElementById('wt').value = wt;
+    document.getElementById('reqId').value = reqId;
+    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(btnId).classList.add('active');
+    tools.forEach(t => { document.getElementById('back_' + t.id).value = t.stdBack; });
+    calc();
+  }
+
+  function calc() {
+    const od = parseFloat(document.getElementById('od').value) || 0;
+    const wt = parseFloat(document.getElementById('wt').value) || 0;
+    const reqId = parseFloat(document.getElementById('reqId').value) || 0;
+
+    const rawId = od - (2 * wt);
+    const doc = (reqId - rawId) / 2;
+    const reqRad = reqId / 2;
+
+    document.getElementById('rawIdOut').textContent = rawId.toFixed(2) + ' mm';
+    document.getElementById('docOut').textContent = doc.toFixed(2) + ' mm';
+    document.getElementById('reqRadOut').textContent = reqRad.toFixed(2) + ' mm';
+
+    tools.forEach(t => {
+      const K = t.stdBlock + refRadius; // Master constant for each slide
+      const actualBack = parseFloat(document.getElementById('back_' + t.id).value) || t.stdBack;
+      const backDiff = actualBack - t.stdBack;
+      const blockSetting = (K - reqRad) + backDiff;
+      document.getElementById('out_' + t.id).textContent = blockSetting.toFixed(2) + ' mm';
+    });
+  }
+
+  initTools();
+</script>
+</body>
+</html>
